@@ -1,0 +1,10 @@
+{
+  "model": "facebook/esm2_t30_150M_UR50D",
+  "embedding_dim": 1280,
+  "max_length": 1022,
+  "stride": 512,
+  "fp16": true,
+  "classifier": "MLP",
+  "hidden_dim": 512,
+  "dropout": 0.3
+}
