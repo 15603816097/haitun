@@ -23,6 +23,26 @@ def f1_binary(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return 0.0 if denom == 0 else float(2 * tp / denom)
 
 
+def fast_macro_f1(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    yb = y_true.astype(bool, copy=False)
+    pb = y_pred.astype(bool, copy=False)
+    support = yb.sum(axis=0)
+    valid = support > 0
+    if not np.any(valid):
+        return 0.0
+
+    tp = np.logical_and(yb, pb).sum(axis=0, dtype=np.int64)
+    pred_pos = pb.sum(axis=0, dtype=np.int64)
+    denom = support + pred_pos
+    f1 = np.divide(
+        2.0 * tp,
+        denom,
+        out=np.zeros_like(denom, dtype=np.float64),
+        where=denom > 0,
+    )
+    return float(f1[valid].mean())
+
+
 def find_best_global_threshold(
     y_true: np.ndarray,
     probs: np.ndarray,
@@ -34,7 +54,7 @@ def find_best_global_threshold(
     best_score = -1.0
     thresholds = np.arange(t_min, t_max + step * 0.5, step, dtype=np.float32)
     for t in thresholds:
-        score = macro_f1_skip_empty(y_true, probs >= t)
+        score = fast_macro_f1(y_true, probs >= t)
         if score > best_score:
             best_score = score
             best_t = float(t)
@@ -115,7 +135,7 @@ def threshold_metrics(
 ) -> dict:
     pred = apply_thresholds(probs, thresholds)
     return {
-        "macro_f1": macro_f1_skip_empty(y_true, pred),
+        "macro_f1": fast_macro_f1(y_true, pred),
         "true_positive_rate": float(y_true.mean()),
         "predicted_positive_rate": float(pred.mean()),
         "true_labels_per_sample": float(y_true.sum(axis=1).mean()),
@@ -193,7 +213,7 @@ def main() -> None:
         fold_pred = apply_thresholds(probs[eval_pos], fold_shrunk)
         crossfit_pred[eval_pos] = fold_pred
 
-        fold_score = macro_f1_skip_empty(y_true[eval_pos], fold_pred)
+        fold_score = fast_macro_f1(y_true[eval_pos], fold_pred)
         fold_rows.append({
             "fold": fold,
             "calibration_rows": int(len(cal_pos)),
@@ -208,7 +228,7 @@ def main() -> None:
         )
 
     crossfit_metrics = {
-        "macro_f1": macro_f1_skip_empty(y_true, crossfit_pred),
+        "macro_f1": fast_macro_f1(y_true, crossfit_pred),
         "true_positive_rate": float(y_true.mean()),
         "predicted_positive_rate": float(crossfit_pred.mean()),
         "true_labels_per_sample": float(y_true.sum(axis=1).mean()),
