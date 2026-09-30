@@ -1,0 +1,17 @@
+{
+  "global_grid": {
+    "min": 0.10,
+    "max": 0.90,
+    "step": 0.01
+  },
+  "per_label": {
+    "min_threshold": 0.05,
+    "max_threshold": 0.95,
+    "shrink_k": 200,
+    "min_support_for_local": 5
+  },
+  "crossfit": {
+    "n_splits": 2,
+    "seed": 42
+  }
+}
