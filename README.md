@@ -58,3 +58,33 @@ GitHub 只管理代码和配置；训练数据、缓存、模型、日志与提�
 ```bash
 git pull
 ```
+
+
+## V1：3–5mer TF-IDF + SGD
+
+先做 20 标签冒烟测试，确认服务器内存、特征缓存与训练流程正常：
+
+```bash
+git pull
+python -m src.train_kmer --mode random --max-labels 20
+```
+
+冒烟测试通过后，运行完整 500 标签 random Group validation：
+
+```bash
+python -m src.train_kmer --mode random
+```
+
+然后运行 test-like tail validation。该分数与 random validation 不是同一口径，不能直接比较绝对值：
+
+```bash
+python -m src.train_kmer --mode tail
+```
+
+V1 会保存连续概率到 `outputs/oof/`，供 V2 做逐标签阈值优化。TF-IDF 特征缓存保存在 `cache/tfidf/`，两者均不会提交到 GitHub。
+
+如果需要重新构建 TF-IDF 而不读取缓存：
+
+```bash
+python -m src.train_kmer --mode random --no-cache
+```
