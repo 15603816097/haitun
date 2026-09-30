@@ -1,6 +1,8 @@
-# Competition data
+# Competition data / official local files
 train.csv
 test.csv
+submit_template_v1.csv
+baseline-v2.ipynb
 
 # Large/generated artifacts
 cache/
