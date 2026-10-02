@@ -258,10 +258,10 @@ def main() -> None:
         "raw_threshold": raw_all,
         "shrunk_threshold": shrunk_all,
     })
-    threshold_df.to_csv(model_dir / "{args.tag}_thresholds.csv", index=False)
+    threshold_df.to_csv(model_dir / f"{args.tag}_thresholds.csv", index=False)
 
     np.savez_compressed(
-        model_dir / "{args.tag}_thresholds.npz",
+        model_dir / f"{args.tag}_thresholds.npz",
         labels=labels,
         global_threshold=np.float32(global_t),
         raw_thresholds=raw_all.astype(np.float32),
@@ -283,7 +283,7 @@ def main() -> None:
         "notes": [
             "Use per_label_crossfit as the honest estimate of threshold-tuning gain.",
             "per_label_fit_all_optimistic is expected to be higher because thresholds are fitted and evaluated on the same rows.",
-            "{args.tag}_thresholds.npz contains thresholds fitted on the full random validation set for later test prediction.",
+            f"{args.tag}_thresholds.npz contains thresholds fitted on the full validation set for later prediction.",
         ],
     }
     summary_path = metrics_dir / f"{args.tag}_threshold_summary.json"
@@ -301,7 +301,7 @@ def main() -> None:
         f"(true={crossfit_metrics['true_labels_per_sample']:.3f})"
     )
     print(f"saved: {summary_path}")
-    print(f"saved: {model_dir / '{args.tag}_thresholds.npz'}")
+    print(f"saved: {model_dir / f'{args.tag}_thresholds.npz'}")
     print("=" * 80)
 
 
