@@ -64,6 +64,7 @@ def resolve_indices(
     n_train: int,
     random_split_path: Path,
     tail_split_path: Path,
+    chronological_split_path: Path,
 ) -> tuple[np.ndarray, np.ndarray | None]:
     if mode == "random":
         split = np.load(random_split_path)
@@ -71,6 +72,9 @@ def resolve_indices(
     if mode in {"tail", "tail_clean"}:
         split = np.load(tail_split_path)
         return split["head_idx"], split["tail_idx"]
+    if mode == "chronological":
+        split = np.load(chronological_split_path)
+        return split["train_idx"], split["val_idx"]
     if mode == "submit":
         return np.arange(n_train, dtype=np.int64), None
     raise ValueError(f"unsupported mode: {mode}")
@@ -288,9 +292,10 @@ def main() -> None:
     p.add_argument("--train", default="train.csv")
     p.add_argument("--test", default="test.csv")
     p.add_argument("--config", default="configs/v1_kmer_sgd.json")
-    p.add_argument("--mode", choices=["random", "tail", "tail_clean", "submit"], default="random")
+    p.add_argument("--mode", choices=["random", "tail", "tail_clean", "chronological", "submit"], default="random")
     p.add_argument("--random-split", default="outputs/splits/group_random_seed42.npz")
     p.add_argument("--tail-split", default="outputs/splits/test_like_tail.npz")
+    p.add_argument("--chronological-split", default="outputs/splits/chronological_group_holdout.npz")
     p.add_argument("--cache-dir", default="cache/tfidf")
     p.add_argument("--output-root", default="outputs")
     p.add_argument("--no-cache", action="store_true")
@@ -317,12 +322,13 @@ def main() -> None:
         n_train=len(train),
         random_split_path=Path(args.random_split),
         tail_split_path=Path(args.tail_split),
+        chronological_split_path=Path(args.chronological_split),
     )
 
     y_all = train[labels].to_numpy(dtype=np.int8)
     y_fit = y_all[fit_idx]
 
-    if args.mode in {"random", "tail", "tail_clean"}:
+    if args.mode in {"random", "tail", "tail_clean", "chronological"}:
         assert eval_idx is not None
         eval_sequences = train.iloc[eval_idx]["sequence"]
     else:
@@ -339,7 +345,7 @@ def main() -> None:
     )
     assert X_eval is not None
 
-    if args.mode in {"random", "tail", "tail_clean"}:
+    if args.mode in {"random", "tail", "tail_clean", "chronological"}:
         assert eval_idx is not None
         probs, used_labels = train_scores(
             X_fit=X_fit,
