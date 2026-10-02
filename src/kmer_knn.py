@@ -22,12 +22,13 @@ def resolve_cache(config: dict, mode: str, cache_dir: Path) -> Path:
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=["random", "tail", "tail_clean"], default="random")
+    p.add_argument("--mode", choices=["random", "tail", "tail_clean", "chronological"], default="random")
     p.add_argument("--config", default="configs/v1_kmer_sgd.json")
     p.add_argument("--cache-dir", default="cache/tfidf")
     p.add_argument("--train", default="train.csv")
     p.add_argument("--random-split", default="outputs/splits/group_random_seed42.npz")
     p.add_argument("--tail-split", default="outputs/splits/test_like_tail.npz")
+    p.add_argument("--chronological-split", default="outputs/splits/chronological_group_holdout.npz")
     p.add_argument("--k", type=int, default=20)
     p.add_argument("--power", type=float, default=2.0)
     p.add_argument("--output-root", default="outputs")
@@ -57,6 +58,9 @@ def main() -> None:
 
     if args.mode == "random":
         sp = np.load(args.random_split)
+        fit_idx, eval_idx = sp["train_idx"], sp["val_idx"]
+    elif args.mode == "chronological":
+        sp = np.load(args.chronological_split)
         fit_idx, eval_idx = sp["train_idx"], sp["val_idx"]
     else:
         sp = np.load(args.tail_split)
