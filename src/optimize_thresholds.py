@@ -149,6 +149,7 @@ def main() -> None:
     p.add_argument("--train", default="train.csv")
     p.add_argument("--config", default="configs/v2_threshold.json")
     p.add_argument("--output-root", default="outputs")
+    p.add_argument("--tag", default="v2_kmer")
     args = p.parse_args()
 
     pack = np.load(args.scores, allow_pickle=False)
@@ -257,10 +258,10 @@ def main() -> None:
         "raw_threshold": raw_all,
         "shrunk_threshold": shrunk_all,
     })
-    threshold_df.to_csv(model_dir / "v2_kmer_thresholds.csv", index=False)
+    threshold_df.to_csv(model_dir / "{args.tag}_thresholds.csv", index=False)
 
     np.savez_compressed(
-        model_dir / "v2_kmer_thresholds.npz",
+        model_dir / "{args.tag}_thresholds.npz",
         labels=labels,
         global_threshold=np.float32(global_t),
         raw_thresholds=raw_all.astype(np.float32),
@@ -268,7 +269,7 @@ def main() -> None:
     )
 
     summary = {
-        "version": "V2",
+        "version": args.tag,
         "source_scores": args.scores,
         "fixed_0_5": fixed,
         "global_fit_all": {
@@ -282,10 +283,10 @@ def main() -> None:
         "notes": [
             "Use per_label_crossfit as the honest estimate of threshold-tuning gain.",
             "per_label_fit_all_optimistic is expected to be higher because thresholds are fitted and evaluated on the same rows.",
-            "v2_kmer_thresholds.npz contains thresholds fitted on the full random validation set for later test prediction.",
+            "{args.tag}_thresholds.npz contains thresholds fitted on the full random validation set for later test prediction.",
         ],
     }
-    summary_path = metrics_dir / "v2_threshold_summary.json"
+    summary_path = metrics_dir / f"{args.tag}_threshold_summary.json"
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print("=" * 80)
@@ -300,7 +301,7 @@ def main() -> None:
         f"(true={crossfit_metrics['true_labels_per_sample']:.3f})"
     )
     print(f"saved: {summary_path}")
-    print(f"saved: {model_dir / 'v2_kmer_thresholds.npz'}")
+    print(f"saved: {model_dir / '{args.tag}_thresholds.npz'}")
     print("=" * 80)
 
 
