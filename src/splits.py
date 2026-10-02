@@ -66,14 +66,38 @@ def main() -> None:
     train_num = _numeric_ids(train["protein_id"])
     test_num = _numeric_ids(test["protein_id"])
     tail_idx = np.array([], dtype=np.int64)
+    tail_clean_idx = np.array([], dtype=np.int64)
     head_idx = np.arange(len(train), dtype=np.int64)
     test_min = None
+    tail_exact_overlap_rows = 0
+    tail_exact_overlap_groups = 0
 
     if np.all(train_num >= 0) and np.all(test_num >= 0):
         test_min = int(test_num.min())
         tail_idx = np.flatnonzero(train_num >= test_min)
         head_idx = np.flatnonzero(train_num < test_min)
-        np.savez_compressed(output / "test_like_tail.npz", head_idx=head_idx, tail_idx=tail_idx)
+        np.savez_compressed(
+            output / "test_like_tail.npz",
+            head_idx=head_idx,
+            tail_idx=tail_idx,
+        )
+
+        head_sequences = set(groups[head_idx])
+        tail_sequences = groups[tail_idx]
+        overlap_mask = np.fromiter(
+            (seq in head_sequences for seq in tail_sequences),
+            dtype=bool,
+            count=len(tail_idx),
+        )
+        tail_exact_overlap_rows = int(overlap_mask.sum())
+        tail_exact_overlap_groups = int(len(set(tail_sequences[overlap_mask])))
+        tail_clean_idx = tail_idx[~overlap_mask]
+
+        np.savez_compressed(
+            output / "test_like_tail_clean.npz",
+            head_idx=head_idx,
+            tail_idx=tail_clean_idx,
+        )
 
     meta = {
         "seed": args.seed,
@@ -81,23 +105,34 @@ def main() -> None:
         "train_rows": int(len(tr_idx)),
         "val_rows": int(len(va_idx)),
         "group_overlap": overlap,
-        "mean_abs_label_prevalence_drift_train_vs_all": float(np.mean(np.abs(prevalence_tr - prevalence_all))),
-        "mean_abs_label_prevalence_drift_val_vs_all": float(np.mean(np.abs(prevalence_va - prevalence_all))),
+        "mean_abs_label_prevalence_drift_train_vs_all": float(
+            np.mean(np.abs(prevalence_tr - prevalence_all))
+        ),
+        "mean_abs_label_prevalence_drift_val_vs_all": float(
+            np.mean(np.abs(prevalence_va - prevalence_all))
+        ),
         "test_min_numeric_id": test_min,
         "test_like_tail_rows": int(len(tail_idx)),
+        "test_like_tail_clean_rows": int(len(tail_clean_idx)),
+        "test_like_tail_exact_overlap_rows_removed": tail_exact_overlap_rows,
+        "test_like_tail_exact_overlap_groups_removed": tail_exact_overlap_groups,
         "head_rows": int(len(head_idx)),
         "notes": [
             "Identical sequences are kept in the same random split to prevent exact-sequence leakage.",
-            "The test-like tail split is diagnostic only; protein_id is not used as a predictive feature.",
-            "V1 will add stronger multilabel-aware split stability checks.",
+            "test_like_tail_clean removes tail rows whose exact sequence already appears in head.",
+            "protein_id is used only to define the diagnostic tail region, never as a predictive feature.",
         ],
     }
-    (output / "metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    (output / "metadata.json").write_text(
+        json.dumps(meta, indent=2),
+        encoding="utf-8",
+    )
 
     print(json.dumps(meta, indent=2))
     print(f"saved: {split_path}")
     if test_min is not None:
         print(f"saved: {output / 'test_like_tail.npz'}")
+        print(f"saved: {output / 'test_like_tail_clean.npz'}")
 
 
 if __name__ == "__main__":
