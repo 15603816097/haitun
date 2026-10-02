@@ -1,10 +1,19 @@
 {
   "model": "facebook/esm2_t30_150M_UR50D",
-  "embedding_dim": 1280,
+  "embedding_dim": 640,
   "max_length": 1022,
   "stride": 512,
   "fp16": true,
-  "classifier": "MLP",
-  "hidden_dim": 512,
-  "dropout": 0.3
+  "classifier": {
+    "hidden_dim": 512,
+    "dropout": 0.30,
+    "batch_size": 1024,
+    "epochs": 30,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "max_pos_weight": 20.0,
+    "early_stopping_patience": 5,
+    "num_workers": 2,
+    "seed": 42
+  }
 }
