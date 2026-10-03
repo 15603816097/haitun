@@ -1,8 +1,7 @@
 """V11: search three-way blend of balanced SGD, unweighted SGD, and tuned KNN.
 
-All inputs are existing chronological OOF probability files, so no retraining is needed.
-The script performs a coarse simplex search over three weights at threshold 0.5 and
-saves the best blended probabilities for downstream per-label threshold tuning.
+Uses existing chronological OOF probability files only.
+This version uses a faster vectorized Macro F1 implementation and prints progress.
 """
 from __future__ import annotations
 
@@ -12,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .metrics import macro_f1_skip_empty
+from .optimize_thresholds import fast_macro_f1
 
 
 def load_scores(path: str):
@@ -51,10 +50,7 @@ def main() -> None:
     y = A["y_true"]
     weights = np.arange(0.0, 1.0 + args.step * 0.5, args.step, dtype=np.float32)
 
-    best = None
-    best_probs = None
-    rows = []
-
+    combos = []
     for wa in weights:
         for wb in weights:
             wc = 1.0 - float(wa) - float(wb)
@@ -62,20 +58,40 @@ def main() -> None:
                 continue
             if wc < 0:
                 wc = 0.0
-            probs = float(wa) * A["probs"] + float(wb) * B["probs"] + wc * C["probs"]
-            pred = (probs >= args.threshold).astype(np.int8)
-            score = macro_f1_skip_empty(y, pred)
-            rec = {
-                "balanced_weight": float(wa),
-                "unweighted_weight": float(wb),
-                "knn_weight": float(wc),
-                "macro_f1": float(score),
-                "pred_labels_per_sample": float(pred.sum(axis=1).mean()),
-            }
-            rows.append(rec)
-            if best is None or score > best["macro_f1"]:
-                best = rec
-                best_probs = probs.astype(np.float32)
+            combos.append((float(wa), float(wb), float(wc)))
+
+    print(f"[search] total combinations: {len(combos)}", flush=True)
+
+    best = None
+    best_probs = None
+    rows = []
+
+    for i, (wa, wb, wc) in enumerate(combos, start=1):
+        probs = wa * A["probs"] + wb * B["probs"] + wc * C["probs"]
+        pred = probs >= args.threshold
+        score = fast_macro_f1(y, pred)
+
+        rec = {
+            "balanced_weight": wa,
+            "unweighted_weight": wb,
+            "knn_weight": wc,
+            "macro_f1": float(score),
+            "pred_labels_per_sample": float(pred.sum(axis=1).mean()),
+        }
+        rows.append(rec)
+
+        if best is None or score > best["macro_f1"]:
+            best = rec
+            best_probs = probs.astype(np.float32)
+
+        if i == 1 or i % 10 == 0 or i == len(combos):
+            print(
+                f"[search] {i}/{len(combos)} "
+                f"current={score:.6f} "
+                f"best={best['macro_f1']:.6f} "
+                f"weights=({wa:.2f},{wb:.2f},{wc:.2f})",
+                flush=True,
+            )
 
     out = Path(args.output_root)
     (out / "oof").mkdir(parents=True, exist_ok=True)
