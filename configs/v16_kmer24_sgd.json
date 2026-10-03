@@ -1,0 +1,25 @@
+{
+  "features": {
+    "analyzer": "char",
+    "ngram_min": 2,
+    "ngram_max": 4,
+    "min_df": 5,
+    "max_features": 160000,
+    "sublinear_tf": true,
+    "lowercase": false,
+    "dtype": "float32"
+  },
+  "model": {
+    "loss": "log_loss",
+    "penalty": "l2",
+    "alpha": 5e-6,
+    "class_weight": "balanced",
+    "max_iter": 30,
+    "tol": 0.001,
+    "random_state": 42,
+    "average": false
+  },
+  "validation": {
+    "fixed_threshold": 0.5
+  }
+}
